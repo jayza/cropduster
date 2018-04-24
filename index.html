@@ -1,34 +1,20 @@
 <html>
 <head>
+  <style>
+    #previewImage {
+      width: 500px;
+      height: 500px;
+    }
+  </style>
   <script data-main="www/app.js" src="node_modules/requirejs/require.js"></script>
 </head>
 <body>
   <canvas id="canvas" width="500" height="500"></canvas>
-  <div id="previewCanvas" style="width:500px;height:500px;"></div>
-
   <script>
     let uploadedFile = document.getElementById('file');
     let form = document.getElementById('form');
     let submit = document.getElementById('submit');
     let c = document.getElementById('canvas');
-
-    window.addEventListener('imagePreview', function(e) {
-      let img = imagedata_to_image(e.detail);
-
-      let preview = document.getElementById('previewCanvas');
-      let uri = "url('"+img+"')";
-          preview.style.backgroundImage = uri;
-    });
-
-    function imagedata_to_image(imagedata) {
-      var canvas = document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
-      canvas.width = imagedata.width;
-      canvas.height = imagedata.height;
-      ctx.putImageData(imagedata, 0, 0);
-
-      return canvas.toDataURL();
-    }
   </script>
 </body>
 </html>
