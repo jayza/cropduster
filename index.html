@@ -1,13 +1,8 @@
 <html>
 <head>
-  <!-- <script src="www/app.js"></script> -->
   <script data-main="www/app.js" src="node_modules/requirejs/require.js"></script>
 </head>
 <body>
-  <!-- <form action="" id="form">
-    <input type="file" name="file" id="file">
-    <input type="submit" value="Add" id="submit">
-  </form> -->
   <canvas id="canvas" width="500" height="500"></canvas>
   <div id="previewCanvas" style="width:500px;height:500px;"></div>
 
@@ -33,16 +28,7 @@
       ctx.putImageData(imagedata, 0, 0);
 
       return canvas.toDataURL();
-  }
-
-    // submit.addEventListener('click', function(e) {
-    //   e.preventDefault();
-      
-    //   let file = uploadedFile.files[0];
-
-    //   imageDrawer.load(file);          
-    // });
-
+    }
   </script>
 </body>
 </html>
