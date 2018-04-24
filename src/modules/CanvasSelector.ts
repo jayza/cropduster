@@ -13,7 +13,6 @@ export class CanvasSelector {
 
   private anchorActive: boolean = false;
   private selectActive: boolean = false;
-  private selectProportionalDimensions: boolean = false;
   private lockCol: boolean = false;
   private lockRow: boolean = false;
 
@@ -86,7 +85,6 @@ export class CanvasSelector {
   private resetOrigin(): void {
     let anchorMatrix = this.anchorMatrix.getAnchorMatrix();
 
-    this.selectProportionalDimensions = false;
     this.lockCol = false;
     this.lockRow = false;
 
@@ -244,10 +242,13 @@ export class CanvasSelector {
       return;
     }
 
+    // Check if shift key is pushed down.
+    let selectProportionalDimensions = e.shiftKey;
+
     let currentSelectX = e.layerX;
     let currentSelectY = e.layerY;
 
-    if (!this.selectProportionalDimensions) {
+    if (!selectProportionalDimensions) {
       this.selectWidth = (!this.lockRow) ? currentSelectX - this.originSelectX : this.selectWidth;
       this.selectHeight = (!this.lockCol) ? currentSelectY - this.originSelectY : this.selectHeight;
     }
