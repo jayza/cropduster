@@ -1,3 +1,5 @@
+import { CanvasSelector } from "./CanvasSelector";
+
 export class ImageDrawer {
   public canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -5,12 +7,15 @@ export class ImageDrawer {
   private image: HTMLImageElement;
   private form: HTMLFormElement;
 
-  public constructor(canvasEl: HTMLCanvasElement) {
+  private canvasSelector: CanvasSelector;
+
+  public constructor(canvasEl: HTMLCanvasElement, canvasSelector: CanvasSelector) {
     this.canvas = canvasEl;
     this.ctx = <CanvasRenderingContext2D> canvasEl.getContext('2d');
     this.form = document.createElement('form');
     this.reader = new FileReader();
     this.image = new Image();
+    this.canvasSelector = canvasSelector;
 
     this.init();
 
@@ -53,7 +58,8 @@ export class ImageDrawer {
    * Draws the uploaded image onto this.canvas.
    */
   public draw() {
-    this.ctx.drawImage(this.image, 0, 0, this.canvas.width, this.canvas.height);
+    let boundaries = this.canvasSelector.getBoundaries();
+    this.ctx.drawImage(this.image, boundaries.x, boundaries.y, boundaries.width, boundaries.height);
   }
 
   /**

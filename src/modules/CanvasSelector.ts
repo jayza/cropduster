@@ -8,8 +8,18 @@ export class CanvasSelector {
   private originSelectX: number = 0;
   private originSelectY: number = 0;
 
+  private currentSelectX: number = 0;
+  private currentSelectY: number = 0;
+  private previousSelectX: number = 0;
+  private previousSelectY: number = 0;
+
   private selectWidth: number = 0;
   private selectHeight: number = 0;
+
+  private boundaryX: number = 50;
+  private boundaryY: number = 50;
+  private boundaryWidth: number = 500;
+  private boundaryHeight: number = 500;
 
   private anchorActive: boolean = false;
   private selectActive: boolean = false;
@@ -25,15 +35,30 @@ export class CanvasSelector {
     this.canvas = canvas;
     this.ctx = <CanvasRenderingContext2D> canvas.getContext('2d');
 
+    this.drawBoundary();
+
     this.canvas.addEventListener('mousedown', this.mouseDownEvent.bind(this), false);
     this.canvas.addEventListener('mouseup', this.mouseUpEvent.bind(this), false);
     this.canvas.addEventListener('mousemove', this.mouseMoveEvent.bind(this), false);
+    this.canvas.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      return false;
+    }, false);
+  }
+
+  public getBoundaries(): any{
+    return {
+      x: this.boundaryX,
+      y: this.boundaryY,
+      width: this.boundaryWidth,
+      height: this.boundaryHeight
+    };
   }
 
   /**
-   * Draws the selected boundary and overlay around it.
+   * Draws the selected selection and overlay around it.
    */
-  public draw() {
+  public draw(): void {
     this.canvas.dispatchEvent(this.redrawEvent);
 
     // Add transparency around the selected area.
@@ -41,10 +66,10 @@ export class CanvasSelector {
     if (anchorMatrix.length > 0) {
       this.ctx.save();
       this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      this.ctx.fillRect(0,0, anchorMatrix[0][0].x, this.canvas.height);
-      this.ctx.fillRect(anchorMatrix[0][2].x, 0, Math.abs(this.canvas.width - this.selectWidth), this.canvas.height);
-      this.ctx.fillRect(anchorMatrix[0][0].x, 0, Math.abs(this.selectWidth), anchorMatrix[0][0].y);
-      this.ctx.fillRect(anchorMatrix[2][0].x, anchorMatrix[2][0].y, Math.abs(this.selectWidth), Math.abs(this.canvas.height - anchorMatrix[2][0].y));
+      this.ctx.fillRect(this.boundaryX, this.boundaryY, anchorMatrix[0][0].x - this.boundaryX, this.boundaryHeight);
+      this.ctx.fillRect(anchorMatrix[0][2].x, this.boundaryY, Math.abs(anchorMatrix[0][2].x - (this.boundaryWidth + this.boundaryX)), this.boundaryHeight);
+      this.ctx.fillRect(anchorMatrix[0][0].x, this.boundaryY, Math.abs(this.selectWidth), anchorMatrix[0][0].y - this.boundaryY);
+      this.ctx.fillRect(anchorMatrix[2][0].x, anchorMatrix[2][0].y, Math.abs(this.selectWidth), Math.abs(anchorMatrix[2][0].y - (this.boundaryHeight + this.boundaryY)));
       this.ctx.restore();
     }
 
@@ -122,7 +147,9 @@ export class CanvasSelector {
    * Mousedown event handler.
    * @param e MouseEvent
    */
-  private mouseDownEvent(e: MouseEvent) {
+  private mouseDownEvent(e: MouseEvent): void {
+    e.preventDefault();
+
     let x = e.layerX;
     let y = e.layerY;
 
@@ -151,6 +178,11 @@ export class CanvasSelector {
       return;
     }
 
+    // Make sure we cant draw a selection outside boundary.ß
+    if (this.collideWithBoundary(x,y)) {
+      return;
+    }
+
     // Otherwise run default click option.
     this.selectClick(e);
   }
@@ -159,12 +191,14 @@ export class CanvasSelector {
    * Mouseup event handler.
    * @param e MouseEvent
    */
-  private mouseUpEvent(e: MouseEvent) {
+  private mouseUpEvent(e: MouseEvent): void {
+    e.preventDefault();
+
     if (this.anchorActive !== false) {
       this.anchorActive = false;
     }
 
-    // Let go off selecting boundary.
+    // Let go off selecting selection.
     if (this.selectActive) {
       this.selectActive = false;
       this.anchorActive = false;
@@ -187,7 +221,9 @@ export class CanvasSelector {
    * Mousemove event handler.
    * @param e MouseEvent
    */
-  private mouseMoveEvent(e: MouseEvent) {
+  private mouseMoveEvent(e: MouseEvent): void {
+    e.preventDefault();
+
     if (this.selectActive) {
       this.selectMove(e);
       return;
@@ -201,24 +237,28 @@ export class CanvasSelector {
    * 
    * @param e MouseEvent
    */
-  private hoverCursor(e: MouseEvent) {
+  private hoverCursor(e: MouseEvent): void {
     let x = e.layerX;
     let y = e.layerY;
 
     // Check if we hover on anchors.
     let collidingAnchor = this.anchorMatrix.getCollidingAnchor(x, y);
     if (collidingAnchor !== false) {
-      this.canvas.style.cursor = collidingAnchor.cursor;
+      if (e.ctrlKey) {
+        this.canvas.style.cursor = 'move';
+      }
+      else {
+        this.canvas.style.cursor = collidingAnchor.cursor;
+      }
       return;
     }
 
     // Otherwise run default hover option.
     this.canvas.style.cursor = "auto";
-    // this.selectMove(e);
   } 
 
   private selectClick(e: MouseEvent) {
-    // If we're currently selecting a boundary.
+    // If we're currently selecting a selection.
     if (this.selectActive) {
       this.selectActive = false;
       return;
@@ -234,31 +274,91 @@ export class CanvasSelector {
   }
 
   /**
-   * Calculates the width and height of the selected boundary.
+   * Calculates the width and height of the selected selection.
    * @param e MouseEvent
    */
-  private selectMove(e: MouseEvent) {
+  private selectMove(e: MouseEvent): void {
     if (!this.selectActive) {
       return;
     }
 
-    // Check if shift key is pushed down.
-    let selectProportionalDimensions = e.shiftKey;
+    this.currentSelectX = e.layerX;
+    this.currentSelectY = e.layerY;
 
-    let currentSelectX = e.layerX;
-    let currentSelectY = e.layerY;
-
-    if (!selectProportionalDimensions) {
-      this.selectWidth = (!this.lockRow) ? currentSelectX - this.originSelectX : this.selectWidth;
-      this.selectHeight = (!this.lockCol) ? currentSelectY - this.originSelectY : this.selectHeight;
+    if (this.collideWithBoundary(this.currentSelectX, this.currentSelectY)) {
+      if (this.currentSelectX < this.boundaryX) {
+        this.currentSelectX = this.boundaryX;
+      }
+      if (this.currentSelectX > (this.boundaryWidth + this.boundaryX)) {
+        this.currentSelectX = this.boundaryX + this.boundaryWidth;
+      }
+      if (this.currentSelectY < this.boundaryY) {
+        this.currentSelectY = this.boundaryY;
+      }
+      if (this.currentSelectY > (this.boundaryHeight + this.boundaryY)) {
+        this.currentSelectY = this.boundaryY + this.boundaryHeight;
+      }
     }
-    else {
-      let maxSelect = Math.max(currentSelectX, currentSelectY);
+
+    // Move: Check if we are holding ctrl while pulling anchor handles.
+    if (e.ctrlKey && !e.shiftKey) {
+      // @todo: Fix moving selection..
+      if (this.collideWithBoundary(e.layerX, e.layerY)) {
+        this.originSelectX = this.currentSelectX - this.selectWidth;
+        this.originSelectY = this.currentSelectY - this.selectHeight;
+      }
+      
+      if (!this.collideWithBoundary(this.originSelectX, this.originSelectY) || !this.collideWithBoundary(e.layerX, e.layerY)) {
+        this.originSelectX = this.currentSelectX - this.selectWidth;
+        this.originSelectY = this.currentSelectY - this.selectHeight;
+      }
+
+      if (this.collideWithBoundary(this.originSelectX, this.originSelectY)) {
+        if (this.originSelectX < this.boundaryX) {
+          this.originSelectX = this.boundaryX;
+        }
+        if (this.originSelectY < this.boundaryY) {
+          this.originSelectY = this.boundaryY;
+        }
+      }
+    }
+
+    // Scale: Check if we are holding shift key while we pull the diagonal anchor handles.
+    else if ((e.shiftKey && !e.ctrlKey) && !this.lockRow && !this.lockCol) {
+      // @todo: Fix proper scaling and so it works on all anchors.
+      let maxSelect = Math.max(this.currentSelectX, this.currentSelectY);
       this.selectWidth = maxSelect - this.originSelectX;
       this.selectHeight = maxSelect - this.originSelectY;
     }
+
+    // Draw selection.
+    else {
+      this.selectWidth = (!this.lockRow) ? this.currentSelectX - this.originSelectX : this.selectWidth;
+      this.selectHeight = (!this.lockCol) ? this.currentSelectY - this.originSelectY : this.selectHeight;
+    }
+
     // Redraw.
     this.draw();
+
+    this.previousSelectX = e.layerX;
+    this.previousSelectY = e.layerY;
   }
 
+  private drawBoundary(): void {
+    this.ctx.rect(this.boundaryX, this.boundaryY, this.boundaryWidth, this.boundaryHeight);
+    this.ctx.stroke();
+  }
+
+  /**
+   * Check if a coordinate collides with boundary.
+   * @param x X Coordinate
+   * @param y Y Coordinate
+   */
+  private collideWithBoundary(x: number, y: number): boolean {
+    if (x < this.boundaryX || y < this.boundaryY || x > (this.boundaryX + this.boundaryWidth) || y > (this.boundaryY + this.boundaryHeight)) {
+      return true;
+    }
+
+    return false;
+  }
 }
